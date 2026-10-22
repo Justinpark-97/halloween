@@ -16,29 +16,22 @@ const form=document.getElementById('rsvp-form');
 const button=document.getElementById('submit-button');
 const statusBox=document.getElementById('status');
 const requestId=crypto.randomUUID();
-let pending=false, timer;
-function failure(message){pending=false;clearTimeout(timer);button.disabled=false;button.querySelector('span').textContent='Try again';statusBox.textContent=message;statusBox.className='status error';statusBox.hidden=false;}
-window.addEventListener('message',event=>{
- console.info('RSVP reply origin:',event.origin,'payload type:',typeof event.data);
- if(!pending || !/^https:\/\/(?:script|[a-z0-9-]+-script)\.googleusercontent\.com$/.test(event.origin))return;
- const result=event.data;
- if(!result || result.type!=='halloween-rsvp' || result.requestId!==requestId)return;
- if(result.ok!==true){failure('Your RSVP could not be confirmed. Please try again or contact your inviting host.');return;}
- pending=false;clearTimeout(timer);form.hidden=true;statusBox.hidden=true;document.querySelector('.required-note').hidden=true;document.getElementById('success').hidden=false;document.getElementById('success').focus();
-});
-form.addEventListener('submit',event=>{
- event.preventDefault();if(pending || !form.reportValidity())return;
- const name=form.elements.name.value.trim();
- if(!name){form.elements.name.setCustomValidity('Please enter your name.');form.elements.name.reportValidity();return;}
- if(!RSVP_ENDPOINT){failure('Online RSVP is being set up. Please contact your inviting host to RSVP.');return;}
+let pending=false;
+function failure(message){pending=false;button.disabled=false;button.querySelector('span').textContent='Try again';statusBox.textContent=message;statusBox.className='status error';statusBox.hidden=false;}
+form.addEventListener('submit',async event=>{
+ event.preventDefault();if(pending||!form.reportValidity())return;
+ const name=form.elements.name.value.trim();if(!name){form.elements.name.setCustomValidity('Please enter your name.');form.elements.name.reportValidity();return;}
  pending=true;button.disabled=true;button.querySelector('span').textContent='Adding you to the list…';statusBox.hidden=true;
- let frame=document.getElementById('rsvp-response');
- if(!frame){frame=document.createElement('iframe');frame.id='rsvp-response';frame.name='rsvp-response';frame.style.cssText='position:fixed;left:-100px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0';frame.setAttribute('aria-hidden','true');frame.title='RSVP submission';document.body.appendChild(frame);}
- const post=document.createElement('form');post.method='POST';post.action=RSVP_ENDPOINT;post.target='rsvp-response';post.hidden=true;
- const data={name,referrer:form.elements.referrer.value,website:form.elements.website.value,requestId};
- for(const [key,value] of Object.entries(data)){const input=document.createElement('input');input.type='hidden';input.name=key;input.value=value;post.appendChild(input);}
- document.body.appendChild(post);post.submit();post.remove();
- timer=setTimeout(()=>failure('Confirmation is taking longer than expected. Please retry or contact your host. Your details have been kept.'),45000);
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),45000);
+ try{
+  const body=new URLSearchParams({name,referrer:form.elements.referrer.value,website:form.elements.website.value,requestId});
+  const response=await fetch(RSVP_ENDPOINT,{method:'POST',body,signal:controller.signal,credentials:'omit',redirect:'follow'});
+  if(!response.ok)throw new Error('Request failed');
+  const result=await response.json();
+  if(result.ok!==true||result.requestId!==requestId||result.type!=='halloween-rsvp')throw new Error('Not confirmed');
+  form.hidden=true;document.querySelector('.required-note').hidden=true;document.getElementById('success').hidden=false;document.getElementById('success').focus();
+ }catch(error){failure('Your RSVP could not be confirmed. Please try again or contact your inviting host. Your details have been kept.');}
+ finally{clearTimeout(timer);pending=false;}
 });
 form.elements.name.addEventListener('input',()=>form.elements.name.setCustomValidity(''));
 </script></body></html>
