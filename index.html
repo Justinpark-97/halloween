@@ -19,6 +19,7 @@ const requestId=crypto.randomUUID();
 let pending=false, timer;
 function failure(message){pending=false;clearTimeout(timer);button.disabled=false;button.querySelector('span').textContent='Try again';statusBox.textContent=message;statusBox.className='status error';statusBox.hidden=false;}
 window.addEventListener('message',event=>{
+ console.info('RSVP reply origin:',event.origin,'payload type:',typeof event.data);
  if(!pending || !/^https:\/\/(?:script|[a-z0-9-]+-script)\.googleusercontent\.com$/.test(event.origin))return;
  const result=event.data;
  if(!result || result.type!=='halloween-rsvp' || result.requestId!==requestId)return;
@@ -32,7 +33,7 @@ form.addEventListener('submit',event=>{
  if(!RSVP_ENDPOINT){failure('Online RSVP is being set up. Please contact your inviting host to RSVP.');return;}
  pending=true;button.disabled=true;button.querySelector('span').textContent='Adding you to the list…';statusBox.hidden=true;
  let frame=document.getElementById('rsvp-response');
- if(!frame){frame=document.createElement('iframe');frame.id='rsvp-response';frame.name='rsvp-response';frame.hidden=true;frame.title='RSVP submission';document.body.appendChild(frame);}
+ if(!frame){frame=document.createElement('iframe');frame.id='rsvp-response';frame.name='rsvp-response';frame.style.cssText='position:fixed;left:-100px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0';frame.setAttribute('aria-hidden','true');frame.title='RSVP submission';document.body.appendChild(frame);}
  const post=document.createElement('form');post.method='POST';post.action=RSVP_ENDPOINT;post.target='rsvp-response';post.hidden=true;
  const data={name,referrer:form.elements.referrer.value,website:form.elements.website.value,requestId};
  for(const [key,value] of Object.entries(data)){const input=document.createElement('input');input.type='hidden';input.name=key;input.value=value;post.appendChild(input);}
