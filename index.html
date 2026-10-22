@@ -19,7 +19,7 @@ const requestId=crypto.randomUUID();
 let pending=false, timer;
 function failure(message){pending=false;clearTimeout(timer);button.disabled=false;button.querySelector('span').textContent='Try again';statusBox.textContent=message;statusBox.className='status error';statusBox.hidden=false;}
 window.addEventListener('message',event=>{
- if(!pending || !/^https:\/\/([a-z0-9-]+\.)?script\.googleusercontent\.com$/.test(event.origin))return;
+ if(!pending || !/^https:\/\/(?:script|[a-z0-9-]+-script)\.googleusercontent\.com$/.test(event.origin))return;
  const result=event.data;
  if(!result || result.type!=='halloween-rsvp' || result.requestId!==requestId)return;
  if(result.ok!==true){failure('Your RSVP could not be confirmed. Please try again or contact your inviting host.');return;}
